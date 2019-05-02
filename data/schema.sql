@@ -13,7 +13,7 @@ CREATE TABLE locations(
   -- allows each record tohave a unique identifier
   search_query VARCHAR(255),
   -- allows for long names, but varchar will adapt spaces to fit name, up to 255
-  formatted_address VARCHAR(255),
+  formatted_query VARCHAR(255),
   latitude NUMERIC(10,7),
   longitude NUMERIC(10,7)
 );
@@ -23,6 +23,7 @@ CREATE TABLE weathers(
   id SERIAL PRIMARY KEY, 
   forecast VARCHAR(255),
   time VARCHAR(255),
+  created_at VARCHAR(255),
   location_id INTEGER NOT NULL,
   -- ^this will be the id from the location table
   FOREIGN KEY (location_id) REFERENCES locations (id)

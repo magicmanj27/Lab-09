@@ -26,5 +26,9 @@
     "express": "^4.16.4",
     "pg": "^7.10.0",
     "superagent": "^5.0.5"
-  }
+  },
+  "keywords": [
+    "city",
+    "explorer"
+  ]
 }
