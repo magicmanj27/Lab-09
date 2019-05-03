@@ -26,7 +26,7 @@ client.on('error', err => console.log(err));
 app.get('/location', searchToLatLong);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
-// app.get('/movies', getMovies);
+app.get('/movies', getMovies);
 app.get('/yelp', getYelps);
 
 
@@ -263,43 +263,44 @@ function getEvents(request, response) {
 }
 
 // HELPER: MOVIE DATA******
-// function getMovies(request, response) {
-//   let query = request.query.data.id;
-//   let sql = `SELECT * FROM events WHERE location_id=$1;`;
-//   let values = [query];
+function getMovies(request, response) {
+  let query = request.query.data.id;
+  let sql = `SELECT * FROM events WHERE location_id=$1;`;
+  let values = [query];
 
-//   client.query(sql, values)
-//     .then(result => {
-//       if(result.rowCount > 0) {
-//         // console.log('movie from SQL');
-//         response.send(result.rows);
-//       } else {
-//         const url = `https://api.themoviedb.org/3/movie/550?api_key=${process.env.MOVIE_API_KEY}`;//<--what is the correct url to include location data?
+  client.query('values adn query', sql, values)
+    .then(result => {
+      if(result.rowCount > 0) {
+        // console.log('movie from SQL');
+        response.send(result.rows);
+      } else {
+        const url = `https://api.themoviedb.org/3/search/keyword?api_key=${MOVIE_API_KEY}&query=${request.query.data.search_query}&page=1
+        `;
 
-//         return superagent.get(url)
-//           .then(result => {
-//             console.log('MOVIE from API🎦', result.body,'🎦');
-//             if (!result.body.length) {throw 'NO DATA';}
-//             else {
-//               const movieSummaries = result.body.map(movieData => {
-//                 let movie = new Movie(movieData);
-//                 movie.id = query;
+        return superagent.get(url)
+          .then(result => {
+            console.log('MOVIE from API🎦', result.body,'🎦');
+            if (!result.body.length) {throw 'NO DATA';}
+            else {
+              const movieSummaries = result.body.map(movieData => {
+                let movie = new Movie(movieData);
+                movie.id = query;
 
-//                 let newSQL = `INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
-//                 let newValues = Object.values(movie);
+                let newSQL = `INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
+                let newValues = Object.values(movie);
 
-//                 client.query(newSQL, newValues);
-//                 console.log('🎦',movie);
+                client.query(newSQL, newValues);
+                console.log('🎦',movie);
 
-//                 return movie;
-//               });
-//               response.send(movieSummaries);
-//             }
-//           })
-//           .catch(error => handleError(error, response));
-//       }
-//     });
-// }
+                return movie;
+              });
+              response.send(movieSummaries);
+            }
+          })
+          .catch(error => handleError(error, response));
+      }
+    });
+}
 
 // HELPER: YELP DATA
 function getYelps(request, response) {
@@ -317,6 +318,7 @@ function getYelps(request, response) {
         const url = `https://api.yelp.com/v3/businesses/search?${request.query.data.latitude}&${request.query.data.longitude}`;
 
         return superagent.get(url)
+        // .set({'Authorization': 'Bearer ' + process.env.YELP_API_KEY})
           .then(result => {
             console.log('YELP from API of YELP 🔴', result.body.businesses, '🔴');
             if (!result.body.businesses.length) {throw 'NO DATA';}
