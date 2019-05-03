@@ -29,6 +29,7 @@ CREATE TABLE weathers(
   FOREIGN KEY (location_id) REFERENCES locations (id)
   -- (this field in parenthesis) references the locations table, specifically the id field
 );
+
 -- update schema run psql -f schema.sql -d city_explorer
 
 CREATE TABLE events(
@@ -45,10 +46,10 @@ CREATE TABLE movies(
   id SERIAL PRIMARY KEY,
   title VARCHAR(255),
   overview VARCHAR(500),
-  average_votes NUMERIC (4,2),
-  total_votes NUMERIC(10),
-  image_url VARCHAR(255),
-  popularity NUMERIC(6,3),
+  average_votes VARCHAR (255),
+  total_votes VARCHAR (255),
+  image_url VARCHAR(500),
+  popularity VARCHAR (255),
   released_on VARCHAR(255),
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
@@ -59,7 +60,7 @@ id SERIAL PRIMARY KEY,
 name VARCHAR(255), 
 image_url VARCHAR(255), 
 price VARCHAR(5), 
-rating NUMERIC(3,1), 
+rating VARCHAR (255), 
 url VARCHAR(255), 
 location_id INTEGER NOT NULL,
 FOREIGN KEY (location_id) REFERENCES locations (id)
