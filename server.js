@@ -26,7 +26,7 @@ client.on('error', err => console.log(err));
 app.get('/location', searchToLatLong);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
-app.get('/movies', getMovies);
+// app.get('/movies', getMovies);
 app.get('/yelp', getYelps);
 
 
@@ -54,16 +54,16 @@ function handleError(err, res) {
 //  e. Return the location to the front-end.
 
 // If we have existing data, this is how we grab it
-function getDataFromDB(sqlInfo){
+function getDataFromDB(sqlInfo) {
   // create the SQL statement
   let condition = '';
   let values = [];
 
-  if (sqlInfo.searchQuery){
+  if (sqlInfo.searchQuery) {
     condition = 'search_query';
     values = [sqlInfo.searchQuery];
 
-  }else{
+  } else {
     condition = 'location_id';
     values = [sqlInfo.id];
   }
@@ -71,16 +71,16 @@ function getDataFromDB(sqlInfo){
   let sql = `SELECT * FROM ${sqlInfo.endpoint}s WHERE ${condition}=$1;`;
 
   // get the data and return it
-  try{return client.query(sql, values);}
-  catch (err) {handleError(err);}
+  try { return client.query(sql, values); }
+  catch (err) { handleError(err); }
 }
 
 // If we don't have existing data, this is how we will set aside in our DB
-function saveDataToDB(sqlInfo){
+function saveDataToDB(sqlInfo) {
   // create the parameter placeholder
   let params = [];
 
-  for (let i = 1; i<= sqlInfo.values.length; i++){
+  for (let i = 1; i <= sqlInfo.values.length; i++) {
     params.push(`$${i}`);
   }
 
@@ -88,34 +88,34 @@ function saveDataToDB(sqlInfo){
 
   let sql = '';
 
-  if (sqlInfo.searchQuery){
+  if (sqlInfo.searchQuery) {
     // for location only
     sql = `INSERT INTO ${sqlInfo.endpoint}s (${sqlInfo.columns}) VALUES (${sqlParams}) RETURNING ID;`;
-  }else{
+  } else {
     // for all other endpoints
     sql = `INSERT INTO ${sqlInfo.endpoint}s (${sqlInfo.columns}) VALUES (${sqlParams});`;
   }
 
   // save the data
-  try{return client.query(sql, sqlInfo.values);}
-  catch (err){handleError(err);}
+  try { return client.query(sql, sqlInfo.values); }
+  catch (err) { handleError(err); }
 
 }
 
 // We want our data to be current so we will set timeouts ot refresh it
-function checkTimeOuts(sqlInfo, sqlData){
+function checkTimeOuts(sqlInfo, sqlData) {
 
   const timeouts = {
-    weather: 15*1000,
-    yelp: 24*100*60*60,
-    movie:30*1000*60*60*24,
-    event:6*1000*60*60,
-    trail:7*1000*60*60*24,
+    weather: 15 * 1000,
+    yelp: 24 * 100 * 60 * 60,
+    movie: 30 * 1000 * 60 * 60 * 24,
+    event: 6 * 1000 * 60 * 60,
+    trail: 7 * 1000 * 60 * 60 * 24,
 
   };
 
   // if data exists, check the age
-  if(sqlData.rowCount>0){
+  if (sqlData.rowCount > 0) {
     let ageOfResults = (Date.now() - sqlData.rows[0].created_at);
 
     // debugging
@@ -124,16 +124,16 @@ function checkTimeOuts(sqlInfo, sqlData){
 
     // compare the age of the result with the timeout value
     // if data is old: DELETE!!!!!
-    if(ageOfResults>timeouts[sqlInfo.endpoint]){
+    if (ageOfResults > timeouts[sqlInfo.endpoint]) {
       let sql = `DELETE FROM ${sqlInfo.endpoint}s WHERE location_id=$1;`;
       let values = [sqlInfo.id];
 
       client.query(sql, values)
-      .then(()=>{return null;})
-      .catch(err=>handleError(err));
+        .then(() => { return null; })
+        .catch(err => handleError(err));
 
-    }else{return sqlData;}
-    
+    } else { return sqlData; }
+
   }
   return null;
 }
@@ -146,7 +146,7 @@ function searchToLatLong(request, response) {
   };
 
   getDataFromDB(sqlInfo)
-  .then(result => {
+    .then(result => {
       // console.log('result from Database', result.rowCount);
       // Did the DB return any info?
       if (result.rowCount > 0) {
@@ -188,8 +188,8 @@ function getWeather(request, response) {
   };
 
   getDataFromDB(sqlInfo)
-  .then(data => checkTimeOuts(sqlInfo, data))
-  .then(result => {
+    .then(data => checkTimeOuts(sqlInfo, data))
+    .then(result => {
       if (result) {
         response.send(results.rows);
         // console.log('this came from DB');
@@ -231,7 +231,7 @@ function getEvents(request, response) {
 
   client.query(sql, values)
     .then(result => {
-      if(result.rowCount > 0) {
+      if (result.rowCount > 0) {
         console.log('Event from SQL');
         response.send(result.rows);
       } else {
@@ -241,7 +241,7 @@ function getEvents(request, response) {
         return superagent.get(url)
           .then(result => {
             // console.log('Event from API', result.body.events);
-            if (!result.body.events.length) {throw 'NO DATA';}
+            if (!result.body.events.length) { throw 'NO DATA'; }
             else {
               const eventSummaries = result.body.events.map(eventData => {
                 let event = new Event(eventData);
@@ -265,22 +265,22 @@ function getEvents(request, response) {
 // HELPER: MOVIE DATA******
 function getMovies(request, response) {
   let query = request.query.data.id;
-  let sql = `SELECT * FROM events WHERE location_id=$1;`;
+  let sql = `SELECT * FROM movies WHERE location_id=$1;`;
   let values = [query];
 
-  client.query('values adn query', sql, values)
+  console.log('we are in the movies fn')
+  client.query(sql, values)
     .then(result => {
-      if(result.rowCount > 0) {
+      if (result.rowCount > 0) {
         // console.log('movie from SQL');
         response.send(result.rows);
       } else {
-        const url = `https://api.themoviedb.org/3/search/keyword?api_key=${MOVIE_API_KEY}&query=${request.query.data.search_query}&page=1
-        `;
+        const url = `https://api.themoviedb.org/3/search/keyword?api_key=${MOVIES_API_KEY}&query=${request.query.data.formatted_query}&page=1`;
 
         return superagent.get(url)
           .then(result => {
-            console.log('MOVIE from API🎦', result.body,'🎦');
-            if (!result.body.length) {throw 'NO DATA';}
+            console.log('MOVIE from API🎦', result.body, '🎦');
+            if (!result.body.length) { throw 'NO DATA'; }
             else {
               const movieSummaries = result.body.map(movieData => {
                 let movie = new Movie(movieData);
@@ -290,7 +290,7 @@ function getMovies(request, response) {
                 let newValues = Object.values(movie);
 
                 client.query(newSQL, newValues);
-                console.log('🎦',movie);
+                console.log('🎦', movie);
 
                 return movie;
               });
@@ -305,33 +305,33 @@ function getMovies(request, response) {
 // HELPER: YELP DATA
 function getYelps(request, response) {
   let query = request.query.data.id;
-  let sql = `SELECT * FROM events WHERE location_id=$1;`;
+  let sql = `SELECT * FROM yelps WHERE location_id=$1;`;
   let values = [query];
   console.log('made it to YELP fn')
 
   client.query(sql, values)
     .then(result => {
-      if(result.rowCount > 0) {
+      if (result.rowCount > 0) {
         console.log('Yelping from SQL');
         response.send(result.rows);
       } else {
-        const url = `https://api.yelp.com/v3/businesses/search?${request.query.data.latitude}&${request.query.data.longitude}`;
+        const url = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude}`;
 
         return superagent.get(url)
-        // .set({'Authorization': 'Bearer ' + process.env.YELP_API_KEY})
+          .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
           .then(result => {
             console.log('YELP from API of YELP 🔴', result.body.businesses, '🔴');
-            if (!result.body.businesses.length) {throw 'NO DATA';}
+            if (!result.body.businesses.length) { throw 'NO DATA'; }
             else {
               const yelpSummaries = result.body.businesses.map(yelpData => {
                 let yelp = new Yelp(yelpData);
                 yelp.id = query;
 
-                let newSQL = `INSERT INTO events (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+                let newSQL = `INSERT INTO yelps (name, image_url, price, rating, url, location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
                 let newValues = Object.values(yelp);
 
                 client.query(newSQL, newValues);
-                console.log('🔴',yelp);
+                console.log('🔴', yelp);
 
                 return yelp;
               });
@@ -369,16 +369,16 @@ function Event(event) {
 }
 
 // CONSTRUCTOR: Yelp Data
-function Yelp(yelp){
-  this.name = yelp.businesses.name;
-  this.image_url = yelp.businesses.url;
-  this.price = yelp.businesses.price;
-  this.rating = yelp.businesses.rating;
-  this.url = yelp.businesses.url;
+function Yelp(yelp) {
+  this.name = yelp.name;
+  this.image_url = yelp.image_url;
+  this.price = yelp.price;
+  this.rating = yelp.rating;
+  this.url = yelp.url;
 }
 
 // CONSTRUCTOR: Movie Data
-function Movie(movie){
+function Movie(movie) {
   this.title = movie.original_title;
   this.overview = movie.overview;
   this.average_votes = movie.vote_average;
