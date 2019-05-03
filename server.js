@@ -279,7 +279,7 @@ function getMovies(request, response) {
         console.log('MOVIE from SQL');
         response.send(result.rows);
       } else {
-        const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.search_query}&page=1
+        const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.search_query}&page=1&include_adult=false
         `;
         // `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.formatted_query}`;
 
@@ -390,7 +390,7 @@ function Movie(movie) {
   this.overview = movie.overview;
   this.average_votes = movie.vote_average;
   this.total_votes = movie.vote_count;
-  this.image_url = movie.poster_path;
+  this.image_url = `https://image.tmdb.org/t/p/w370_and_h556_bestv2/${movie.poster_path}`;
   this.popularity = movie.popularity;
   this.released_on = movie.release_date;
 }
