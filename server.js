@@ -26,6 +26,9 @@ client.on('error', err => console.log(err));
 app.get('/location', searchToLatLong);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
+// app.get('/movies', getMovies);
+// app.get('/yelp', getYelp);
+
 
 // Make sure the server is listening for requests
 app.listen(PORT, () => console.log(`City Explorer Backend is up on ${PORT}`));
@@ -61,23 +64,107 @@ function handleError(err, res) {
 //     .catch(error => handleError(error, response));
 // }
 
+
+function getDataFromDB(sqlInfo){
+  // create the SQL statement
+  let condition = '';
+  let values = [];
+
+  if (sqlInfo.searchQuery){
+    condition = 'search_query';
+    values = [sqlInfo.searchQuery];
+
+  }else{
+    condition = 'location_id';
+    values = [sqlInfo.id];
+  }
+
+  let sql = `SELECT * FROM ${sqlInfo.endpoint}s WHERE ${condition}=$1;`;
+
+  // get the data and return it
+  try{return client.query(sql, values);}
+  catch (err) {handleError(err);}
+}
+
+
+function saveDataToDB(sqlInfo){
+  // create the parameter placeholder
+  let params = [];
+
+  for (let i = 1; i<= sqlInfo.values.length; i++){
+    params.push(`$${i}`);
+  }
+
+  let sqlParams = params.join();
+
+  let sql = '';
+
+  if (sqlInfo.searchQuery){
+    // for location only
+    sql = `INSERT INTO ${sqlInfo.endpoint}s (${sqlInfo.columns}) VALUES (${sqlParams}) RETURNING ID;`;
+  }else{
+    // for all other endpoints
+    sql = `INSERT INTO ${sqlInfo.endpoint}s (${sqlInfo.columns}) VALUES (${sqlParams});`;
+  }
+
+  // save the data
+  try{return client.query(sql, sqlInfo.values);}
+  catch (err){handleError(err);}
+
+}
+
+
+function checkTimeOuts(sqlInfo, sqlData){
+
+  const timeouts = {
+    weather: 15*1000,
+    yelp: 24*100*60*60,
+    movie:30*1000*60*60*24,
+    event:6*1000*60*60,
+    trail:7*1000*60*60*24,
+
+  };
+
+  // if data exists, check the age
+  if(sqlData.rowCount>0){
+    let ageOfResults = (Date.now() - sqlData.rows[0].created_at);
+
+    // debugging
+    console.log(sqlInfo.endpoint, ' age is ', ageOfResults);
+    console.log(sqlInfo.endpoint, ' timeout is ', timeouts[sqlInfo.endpoint]);
+
+    // compare the age of the result with the timeout value
+    // if data is old: DELETE!!!!!
+    if(ageOfResults>timeouts[sqlInfo.endpoint]){
+      let sql = `DELETE FROM ${sqlInfo.endpoint}s WHERE location_id=$1;`;
+      let values = [sqlInfo.id];
+
+      client.query(sql, values)
+      .then(()=>{return null;})
+      .catch(err=>handleError(err));
+
+    }else{return sqlData;}
+    
+  }
+  return null;
+}
+
+
 function searchToLatLong(request, response) {
-  let query = request.query.data;
+  let sqlInfo = {
+    searchQuery: request.query.data,
+    endpoint: 'location'
+  };
 
-  // Define the search query
-  let sql = `SELECT * FROM locations WHERE search_query=$1;`;
-  let values = [query];
-
-  console.log('line 71', sql, values);
-
-  // Make the query of the Database
-  client.query(sql, values)
-    .then(result => {
-      console.log('result from Database', result.rowCount);
+  getDataFromDB(sqlInfo)
+  .then(result => {
+      // console.log('result from Database', result.rowCount);
       // Did the DB return any info?
       if (result.rowCount > 0) {
         response.send(result.rows[0]);
+        console.log('this location is from the DB😍')
       } else {
+        console.log('this is not from DB');
         // otherwise go get the data from the API
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GEOCODE_API_KEY}`;
 
@@ -85,12 +172,12 @@ function searchToLatLong(request, response) {
           .then(result => {
             if (!result.body.results.length) { throw 'NO DATA'; }
             else {
-              let location = new Location(query, result.body.results[0]);
+              let location = new Location(sqlInfo.searchQuery, result.body.results[0]);
 
-              let newSQL = `INSERT INTO locations (search_query, formatted_address, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING ID;`;
-              let newValues = Object.values(location);
+              sqlInfo.columns = Object.keys(location).join();
+              sqlInfo.values = Object.values(location);
 
-              client.query(newSQL, newValues)
+              saveDataToDB(sqlInfo)
                 .then(data => {
                   // attach the returning id to the location object
                   location.id = data.rows[0].id;
@@ -109,30 +196,20 @@ function Location(query, location) {
   this.longitude = location.geometry.location.lng;
 }
 
-// pre database entry
-// function getWeather(request, response) {
-//   const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
-//   return superagent.get(url)
-//     .then(weatherResults => {
-//       const weatherSummaries = weatherResults.body.daily.data.map(day => {
-//         return new Weather(day);
-//       });
-//       response.send(weatherSummaries);
-//     })
-//     .catch(error => handleError(error, response));
-// }
 
 function getWeather(request, response) {
-  let query = request.query.data.id;
-  let sql = `SELECT * FROM weathers WHERE location_id=$1;`;
-  let values = [query];
+  let sqlInfo = {
+    id: request.query.data.id,
+    endpoint: 'weather'
+  };
 
-  client.query(sql, values)
-    .then(result => {
-      if (result.rowCount > 0) {
-        console.log('Weather from SQL');
-        response.send(result.rows);
+  getDataFromDB(sqlInfo)
+  .then(data => checkTimeOuts(sqlInfo, data))
+  .then(result => {
+      if (result) {
+        response.send(results.rows);
+        console.log('this came from DB');
       } else {
         const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
@@ -143,12 +220,12 @@ function getWeather(request, response) {
             else {
               const weatherSummaries = weatherResults.body.daily.data.map(day => {
                 let summary = new Weather(day);
-                summary.id = query;
+                summary.location_id = sqlInfo.id;
 
-                let newSql = `INSERT INTO weathers (forecast, time, location_id) VALUES($1, $2, $3);`;
-                let newValues = Object.values(summary);
-                console.log(newValues);
-                client.query(newSql, newValues);
+                sqlInfo.columns = Object.keys(summary).join();
+                sqlInfo.values = Object.values(summary);
+
+                saveDataToDB(sqlInfo);
 
                 return summary;
 
@@ -165,6 +242,7 @@ function getWeather(request, response) {
 function Weather(day) {
   this.forecast = day.summary;
   this.time = new Date(day.time * 1000).toString().slice(0, 15);
+  this.created_at = Date.now();
 }
 
 // We can keep these for comparisson
