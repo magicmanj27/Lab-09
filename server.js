@@ -26,7 +26,7 @@ client.on('error', err => console.log(err));
 app.get('/location', searchToLatLong);
 app.get('/weather', getWeather);
 app.get('/events', getEvents);
-// app.get('/movies', getMovies);
+app.get('/movies', getMovies);
 app.get('/yelp', getYelps);
 
 
@@ -275,19 +275,20 @@ function getMovies(request, response) {
         // console.log('movie from SQL');
         response.send(result.rows);
       } else {
-        const url = `https://api.themoviedb.org/3/search/keyword?api_key=${MOVIES_API_KEY}&query=${request.query.data.formatted_query}&page=1`;
+        const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.formatted_query}`;
 
         return superagent.get(url)
           .then(result => {
-            console.log('MOVIE from API🎦', result.body, '🎦');
-            if (!result.body.length) { throw 'NO DATA'; }
+            console.log('MOVIE from API🎦', result.body.results, '🎦');
+            if (!result.body.results.length) { throw 'NO DATA'; }
             else {
-              const movieSummaries = result.body.map(movieData => {
+              const movieSummaries = result.body.results.map(movieData => {
                 let movie = new Movie(movieData);
-                movie.id = query;
+                movie.location_id = query;
 
-                let newSQL = `INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
-                let newValues = Object.values(movie);
+                // these need to refactor
+                // let newSQL = `INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`;
+                // let newValues = Object.values(movie);
 
                 client.query(newSQL, newValues);
                 console.log('🎦', movie);
@@ -307,7 +308,7 @@ function getYelps(request, response) {
   let query = request.query.data.id;
   let sql = `SELECT * FROM yelps WHERE location_id=$1;`;
   let values = [query];
-  console.log('made it to YELP fn')
+  // console.log('made it to YELP fn')
 
   client.query(sql, values)
     .then(result => {
@@ -320,7 +321,7 @@ function getYelps(request, response) {
         return superagent.get(url)
           .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
           .then(result => {
-            console.log('YELP from API of YELP 🔴', result.body.businesses, '🔴');
+            // console.log('YELP from API of YELP 🔴', result.body.businesses, '🔴');
             if (!result.body.businesses.length) { throw 'NO DATA'; }
             else {
               const yelpSummaries = result.body.businesses.map(yelpData => {
@@ -331,7 +332,7 @@ function getYelps(request, response) {
                 let newValues = Object.values(yelp);
 
                 client.query(newSQL, newValues);
-                console.log('🔴', yelp);
+                // console.log('🔴', yelp);
 
                 return yelp;
               });
