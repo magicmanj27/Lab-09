@@ -39,7 +39,32 @@ CREATE TABLE events(
   summary VARCHAR(500),
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
-)
+);
+
+CREATE TABLE movies(
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255),
+  overview VARCHAR(500),
+  average_votes NUMERIC (4,2),
+  total_votes NUMERIC(10),
+  image_url VARCHAR(255),
+  popularity NUMERIC(6,3),
+  released_on VARCHAR(255),
+  location_id INTEGER NOT NULL,
+  FOREIGN KEY (location_id) REFERENCES locations (id)
+);
+
+CREATE TABLE yelp(
+id SERIAL PRIMARY KEY,
+name VARCHAR(255), 
+image_url VARCHAR(255), 
+price VARCHAR(5), 
+rating NUMERIC(3,1), 
+url VARCHAR(255), 
+location_id INTEGER NOT NULL,
+FOREIGN KEY (location_id) REFERENCES locations (id)
+);
+
 
 
 -- when you deploy to HEROKU
